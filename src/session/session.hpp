@@ -324,9 +324,12 @@ namespace srouter
 
             void handle_udp_from_remote(IPPacket&& pkt);
 
-            uint16_t setup_udp_mapping(uint16_t dest_port);
+            // Returns this session's TCP tunnel, constructing it on first use: most sessions never
+            // carry tunnelled TCP and should not pay for a QUIC endpoint they will not use.
+            TCPTunnel& tunnel();
 
-            uint16_t map_tcp_remote_port(uint16_t dest_port);
+            // The TCP tunnel if this session has one, without creating one.
+            TCPTunnel* maybe_tunnel() { return tcp_tunnel.get(); }
 
             // Returns true if this session is established, and has not been explicitly closed.
             // Inbound sessions are instantly established; outbound sessions are established once
