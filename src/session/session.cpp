@@ -1,7 +1,6 @@
 #include "session.hpp"
 
 #include "crypto/crypto.hpp"
-#include "tcp_tunnel.hpp"
 #include "handlers/session.hpp"
 #include "handlers/tun.hpp"
 #include "link/endpoint.hpp"
@@ -10,6 +9,7 @@
 #include "path/path.hpp"
 #include "path/transit_hop.hpp"
 #include "router/router.hpp"
+#include "tcp_tunnel.hpp"
 #include "util/bspan.hpp"
 #include "util/formattable.hpp"
 #include "util/random.hpp"
@@ -1552,6 +1552,14 @@ namespace srouter::session
     }
 
     bool OutboundClientSession::use_old_init() const { return not has_flag(_cc_protos, protocol_flag::PFS_PQ); }
+
+    std::optional<bool> OutboundClientSession::remote_accepts_tcp() const
+    {
+        // NONE means no client contact has arrived yet, rather than a remote that supports nothing.
+        if (_cc_protos == protocol_flag::NONE)
+            return std::nullopt;
+        return has_flag(_cc_protos, protocol_flag::TCP_TUNNEL);
+    }
 
     bool OutboundRelaySession::use_old_init() const
     {

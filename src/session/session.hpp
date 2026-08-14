@@ -331,6 +331,11 @@ namespace srouter
             // The TCP tunnel if this session has one, without creating one.
             TCPTunnel* maybe_tunnel() { return tcp_tunnel.get(); }
 
+            // Whether the remote advertises that it can terminate tunnelled TCP streams.  nullopt
+            // means we have no client contact for the remote yet and so cannot tell, in which case a
+            // caller may go ahead and find out the hard way.
+            virtual std::optional<bool> remote_accepts_tcp() const { return std::nullopt; }
+
             // Returns true if this session is established, and has not been explicitly closed.
             // Inbound sessions are instantly established; outbound sessions are established once
             // the session init response arrives from the remote.
@@ -548,6 +553,7 @@ namespace srouter
 
             void select_new_current() override;
             bool use_old_init() const override;
+            std::optional<bool> remote_accepts_tcp() const override;
 
           protected:
             void handle_client_contact(std::span<const std::byte> payload) override;

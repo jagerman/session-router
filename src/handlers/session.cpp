@@ -41,7 +41,7 @@ namespace srouter::handlers
 
             protocol_flag protocols = protocol_flag::PFS_PQ;
             if (!router.embedded())
-                protocols |= protocol_flag::IPV4 | protocol_flag::IPV6;
+                protocols |= protocol_flag::IPV4 | protocol_flag::IPV6 | protocol_flag::TCP_TUNNEL;
 
             client_contact.emplace(
                 router.key_manager.router_id(), netconf.srv_records, protocols, sys_ms{}, netconf.traffic_policy);
