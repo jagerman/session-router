@@ -1352,12 +1352,13 @@ namespace srouter::handlers
             }
 
             mapped_remote target{.remote = remote, .port = port};
-            auto& [udp_handle, cports, holders] = _udp_handles[target];
-            bool existing = static_cast<bool>(udp_handle);
-            holders++;
+            auto h_it = _udp_handles.find(target);
+            bool existing = h_it != _udp_handles.end();
             if (!existing)
-
-                udp_handle = std::make_unique<quic::UDPSocket>(
+            {
+                // Construct before inserting and counting: a throwing socket constructor would
+                // otherwise leave behind an entry with a holder that nothing can ever release.
+                auto socket = std::make_unique<quic::UDPSocket>(
                     router.loop().get_event_base(),
                     quic::Address{"::1", 0},
                     /*gso=*/false,
@@ -1434,7 +1435,12 @@ namespace srouter::handlers
                         session->send_session_data_message(packet, traffic_type::UDP);
                     });
 
-            local_port = udp_handle->address().port();
+                h_it = _udp_handles.try_emplace(target).first;
+                h_it->second.socket = std::move(socket);
+            }
+
+            h_it->second.holders++;
+            local_port = h_it->second.socket->address().port();
             log::debug(
                 logcat,
                 "{} mapped UDP port ({}) for remote {}:{}",
