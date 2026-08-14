@@ -15,6 +15,18 @@ extern "C"
 
 using namespace std::literals;
 
+static std::string_view failure_reason(session::router::tunnel_failure f)
+{
+    using session::router::tunnel_failure;
+    switch (f)
+    {
+        case tunnel_failure::unreachable: return "remote is unreachable";
+        case tunnel_failure::no_tcp: return "remote does not accept tunnelled TCP";
+        case tunnel_failure::timeout: return "session timed out";
+    }
+    return "unknown failure";
+}
+
 int main(int argc, char** argv)
 {
     if (argc <= 1)
@@ -44,8 +56,10 @@ int main(int argc, char** argv)
     std::promise<void> prom;
     std::promise<void> conn_prom;
 
-    // Holding this is what keeps the tunnel up; dropping it releases it.
+    // Holding these is what keeps the tunnels up; dropping them releases them (and, for TCP, closes
+    // any connections established through it).
     session::router::udp_tunnel tunnel;
+    session::router::tcp_tunnel tcp;
 
     bool first_conn = true;
     srouter->on_connected([&] {
@@ -105,9 +119,7 @@ int main(int argc, char** argv)
             [&prom](auto failure) {
                 try
                 {
-                    throw std::runtime_error{
-                        failure == session::router::tunnel_failure::unreachable ? "Remote is unreachable!"
-                                                                               : "Session timed out!"};
+                    throw std::runtime_error{"UDP tunnel failed: "s + std::string{failure_reason(failure)}};
                 }
                 catch (...)
                 {
@@ -144,15 +156,31 @@ int main(int argc, char** argv)
               << "    kill -SIGUSR2 " << pid << " -- re-open TCP tunnel\n"
               << "    Ctrl-C -- shut down\x1b[0m\n\n\n";
 
-    /*
-    srouter.map_tcp_remote_port(std::string{argv[1]}, port,
-        [&](auto tunnel_info) {
-          std::cout << "\n\nTCP bound to port " << tunnel_info.local_port << "\n\n";
-        },
-        [&](auto error_str) {
-          std::cerr << "\nTCP Tunnel map error: " << error_str << "\n";
-        });
-    */
+    auto open_tcp = [&srouter, &target, port]() -> session::router::tcp_tunnel {
+        auto t = srouter->establish_tcp(
+            target,
+            port,
+            [port](auto info) {
+                std::cout << "\n\x1b[32;1mTCP tunnel ready; remote port " << port << " reachable at [::1]:"
+                          << info.local_port << "\x1b[0m\n\n"
+                          << std::flush;
+            },
+            [](auto failure) {
+                std::cerr << "\n\x1b[31;1mTCP tunnel failed: " << failure_reason(failure) << "\x1b[0m\n\n"
+                          << std::flush;
+            });
+
+        if (t)
+            std::cout << "\n\x1b[32;1mTCP bound to [::1]:" << t->local_port << " -> " << target << ":" << port
+                      << "\x1b[0m\n\n";
+        else
+            std::cout << "\n\x1b[31;1mNo TCP tunnel: " << target
+                      << " is unreachable or does not accept tunnelled TCP\x1b[0m\n\n";
+
+        return t;
+    };
+
+    tcp = open_tcp();
 
     std::thread sig_thread{[&] {
         while (srouter)
@@ -162,8 +190,9 @@ int main(int argc, char** argv)
             switch (signo)
             {
                 case SIGHUP:
-                    std::cout << "\n\n\n\x1b[33;1mHangup signal received; closing UDP tunnel\x1b[0m\n\n\n";
+                    std::cout << "\n\n\n\x1b[33;1mHangup signal received; closing tunnels\x1b[0m\n\n\n";
                     tunnel.reset();
+                    tcp.reset();
                     break;
                 case SIGUSR1:
                 {
@@ -176,7 +205,8 @@ int main(int argc, char** argv)
                     break;
                 }
                 case SIGUSR2:
-                    std::cout << "\n\x1b[31;1mSIGUSR2 received: TODO FIXME: reopen TCP tunnel\x1b[0m\n\n";
+                    std::cout << "\n\n\n\x1b[32;1mSIGUSR2 received: (re-)opening TCP tunnel\x1b[0m\n";
+                    tcp = open_tcp();
                     break;
                 default:
                     std::cout << "\n\n\n\x1b[33;1mSignal " << signo << " received, shutting down\x1b\[0m\n\n\n";
