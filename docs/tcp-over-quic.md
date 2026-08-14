@@ -57,10 +57,15 @@ Note this is a *new* flag rather than 1.0.x's `QUIC_TUNNEL` (`1 << 1`), which ad
 role — "I am embedded, reach me via a tunnel" — and was therefore set by exactly the clients that
 cannot accept one.
 
-**No encryption of its own (yet).**  The inner connection needs neither authentication nor encryption:
-the session layer already encrypts end to end and the path layer onion-encrypts.  It currently uses a
-fixed, well-known keypair as a stand-in, which costs a TLS handshake and a second AEAD pass.  Both go
-away when libquic gains null crypto.
+**No encryption of its own.**  The inner connection needs neither authentication nor encryption: the
+session layer already encrypts end to end, the path layer onion-encrypts, and the session has already
+authenticated the peer.  It therefore uses libquic's `DangerouslyUnencryptedCreds`, which replaces
+QUIC's AEAD with a no-op and its TLS handshake with a fixed exchange carrying only the transport
+parameters.  That removes a second encryption pass over every byte and the gnutls handshake that used
+to precede any data.
+
+Both ends must be doing this: such a connection cannot talk to an ordinary QUIC endpoint and fails the
+handshake rather than falling back, which is what the `TCP_TUNNEL` capability flag exists to avoid.
 
 **Packet sizing.**  The inner connection is capped at the QUIC minimum (1200 bytes).  An inner packet
 becomes a 1278-byte session message once session and path overhead (78 bytes) are added, which rides in
@@ -124,9 +129,26 @@ an allow-list belongs in config rather than in the tunnel.
 
 ## Known gaps
 
-- Null crypto in libquic, which removes the inner handshake round trip (via unconditional early data)
-  and the second AEAD pass.
-- A sub-1200 inner packet cap, so an inner packet never splits across two path datagrams.
+- The first TCP connection through a mapping waits a path round trip for the inner handshake.
+  Subsequent ones do not: the connection persists until a minute after its last stream, so this is one
+  RTT per inner connection rather than per TCP connection.
+
+  Opening the inner connection when the mapping is made, rather than on first use, would not help:
+  establish_tcp() hands back the bound port synchronously, so an application can connect straight away
+  without waiting for the session, and that connection already starts the inner handshake, whose
+  Initial waits in the pre-establishment queue and flushes as soon as the session is up.  Opening it
+  earlier would queue the same packet slightly sooner, for every mapping including unused ones, each
+  with its keep-alives -- which is what the idle teardown exists to avoid.
+
+  The remaining round trip is not a scheduling problem: the inner handshake cannot complete before the
+  session that carries it exists.
+
+  Skipping the handshake entirely is a bigger job than "we have no secrets to establish": QUIC only
+  allows stream data in 0-RTT or 1-RTT packets, so it means driving ngtcp2's 0-RTT space directly --
+  null 0-RTT keys, a faked early-data acceptance, and pre-provisioned server transport parameters
+  (which resumption normally supplies) that must not overstate what the server actually allows.
+- A sub-1200 inner packet cap, so an inner packet never splits across two path datagrams; libquic
+  currently refuses a cap below the QUIC minimum.
 - Nothing here handles IPv4: the accepting side connects to the tun's IPv6 address only, deliberately,
   as IPv4 is on its way out.  A tun client with no IPv6 address cannot accept tunnelled TCP.
 - Nested congestion control (the inner connection's BBR inside each hop's BBR, over a channel whose

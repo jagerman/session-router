@@ -4,8 +4,8 @@
 
 #include <oxen/quic/address.hpp>
 #include <oxen/quic/connection.hpp>
+#include <oxen/quic/crypto.hpp>
 #include <oxen/quic/endpoint.hpp>
-#include <oxen/quic/gnutls_crypto.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -72,7 +72,7 @@ namespace srouter::session
 
         Session& _session;
 
-        std::shared_ptr<quic::GNUTLSCreds> _tls_creds;
+        std::shared_ptr<quic::TLSCreds> _tls_creds;
         std::shared_ptr<quic::Endpoint> _ep;
         std::shared_ptr<quic::Connection> _conn;
 
