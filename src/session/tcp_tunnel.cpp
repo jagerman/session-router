@@ -8,19 +8,9 @@
 
 #include <event2/bufferevent.h>
 #include <oxen/quic/opt.hpp>
+#include <oxen/quic/unencrypted.hpp>
 #include <oxenc/endian.h>
 #include <oxenc/hex.h>
-
-namespace
-{
-    using namespace oxenc::literals;
-
-    // A fixed, well-known keypair stands in for credentials the inner connection does not actually
-    // need: it carries nothing the session layer has not already encrypted end to end.  This goes
-    // away once libquic can do null crypto, which also removes the handshake these force us into.
-    inline constexpr auto TUNNEL_SEED = "0000000000000000000000000000000000000000000000000000000000000000"_hex;
-    inline constexpr auto TUNNEL_PUBKEY = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"_hex;
-}  // namespace
 
 namespace srouter::session
 {
@@ -58,7 +48,10 @@ namespace srouter::session
 
     TCPTunnel::TCPTunnel(Session& session) : _session{session}
     {
-        _tls_creds = quic::GNUTLSCreds::make_from_ed_keys(TUNNEL_SEED, TUNNEL_PUBKEY);
+        // The inner connection carries nothing that the session layer has not already encrypted end
+        // to end and the path layer onion-encrypted, and its peer is authenticated by the session
+        // itself, so QUIC's own crypto here would only buy a second AEAD pass and a handshake.
+        _tls_creds = quic::DangerouslyUnencryptedCreds::i_know_this_traffic_is_already_encrypted();
 
         quic::opt::manual_routing send_hook{[this](const quic::Path&, std::span<const std::byte> data) {
             // The Endpoint sends CONNECTION_CLOSE from its destructor, which can run from ~Session
@@ -136,7 +129,9 @@ namespace srouter::session
         log::debug(logcat, "Opening QUIC tunnel connection for session to {}", _session._remote);
 
         _conn = _ep->connect(
-            quic::RemoteAddress{TUNNEL_PUBKEY, FAKE_QUIC_ADDR},
+            // No remote key to verify: nothing here authenticates anything, and the session this
+            // rides inside has already authenticated the peer.
+            quic::RemoteAddress{""sv, FAKE_QUIC_ADDR},
             _tls_creds,
             quic::opt::max_streams{INNER_MAX_STREAMS},
             quic::opt::idle_timeout{INNER_IDLE_TIMEOUT},
@@ -169,7 +164,11 @@ namespace srouter::session
         adopt(std::move(conn), dest_port);
 
         log::debug(
-            logcat, "Tunnelling TCP connection to {}:{} over stream {}", _session._remote, dest_port, stream->stream_id());
+            logcat,
+            "Tunnelling TCP connection to {}:{} over stream {}",
+            _session._remote,
+            dest_port,
+            stream->stream_id());
 
         return ptr;
     }
@@ -207,8 +206,7 @@ namespace srouter::session
         return 0;
     }
 
-    void TCPTunnel::start_accepted_stream(
-        std::shared_ptr<quic::Stream> stream, std::shared_ptr<pending_stream> pending)
+    void TCPTunnel::start_accepted_stream(std::shared_ptr<quic::Stream> stream, std::shared_ptr<pending_stream> pending)
     {
         auto dest_port = oxenc::load_big_to_host<uint16_t>(pending->buffered.data());
         if (dest_port == 0)
