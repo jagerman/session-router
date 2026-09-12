@@ -87,9 +87,9 @@ namespace srouter::path
             // relay pubkeys and IPv4 addresses, from edge -> pivot (or final relay)
             std::vector<std::pair<RouterID, ipv4>> relays;
             sys_ms expiry = {};
-            std::chrono::milliseconds ping_mean;
-            std::chrono::microseconds ping_jitter;
-            int ping_responses, ping_timeouts, ping_recent_timeouts;
+            std::chrono::milliseconds ping_mean{0};
+            std::chrono::microseconds ping_jitter{0};
+            int ping_responses{0}, ping_timeouts{0}, ping_recent_timeouts{0};
         };
         Info get_info() const;
 
