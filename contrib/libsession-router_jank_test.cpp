@@ -124,11 +124,20 @@ int main(int argc, char** argv)
         }
         size_t hop_count = 1;
         std::cout << "Path to snode:\n";
-        for (const auto& [snode, ip] : *current_path)
+        for (const auto& [snode, ip] : current_path->hops)
         {
             std::cout << "\tHop " << hop_count << ":\t" << snode << " @ " << ip << "\n";
             hop_count++;
         }
+        std::cout << "\tLatency: " << current_path->latency.count() << "ms, jitter: "
+                  << current_path->jitter.count() << "us, pings: " << current_path->ping_responses
+                  << " ok / " << current_path->ping_timeouts << " timed out ("
+                  << current_path->ping_recent_timeouts << " in a row)\n"
+                  << "\tExpires in "
+                  << std::chrono::round<std::chrono::seconds>(
+                         current_path->expiry - std::chrono::system_clock::now())
+                         .count()
+                  << "s\n";
     }
     catch (const std::exception& e)
     {

@@ -1,12 +1,15 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <thread>
 #include <type_traits>
+#include <vector>
 
 namespace srouter
 {
@@ -113,8 +116,59 @@ namespace session::router
         const tunnel_info* operator->() const { return &_info; }
     };
 
-    using snode_path = std::vector<std::pair<std::string, std::string>>;
-    using session_path = std::pair<snode_path, std::string>;
+    /// One relay of a path.
+    struct path_hop
+    {
+        /// The relay's network address, i.e. "<pubkey>.snode".
+        std::string relay;
+
+        /// The relay's public IPv4 address, in dotted-quad form.
+        std::string ip;
+    };
+
+    using snode_path = std::vector<path_hop>;
+
+    /// The path a session is currently using, and how it has been performing.
+    struct path_info
+    {
+        /// The relays carrying the path, ordered from the edge (our first hop) to the pivot or
+        /// final relay.  Empty if the session has no path at the moment.
+        snode_path hops;
+
+        /// When the path expires.  Paths are replaced well before this in normal operation, so
+        /// this is an upper bound on the path's life rather than a prediction of when the session
+        /// will switch paths.  Epoch if there is no path.
+        std::chrono::sys_time<std::chrono::milliseconds> expiry;
+
+        /// Mean round-trip time of the path's pings, measured over the *whole* path: from us to
+        /// the far end and back.  There is no per-hop timing available.  Zero until the first
+        /// response arrives (i.e. whenever `ping_responses` is 0).
+        std::chrono::milliseconds latency{0};
+
+        /// Mean absolute difference between consecutive ping round-trip times.  Needs at least two
+        /// responses to mean anything; zero until then.
+        std::chrono::microseconds jitter{0};
+
+        /// Pings answered, and pings that timed out, over the life of the path.
+        int ping_responses{0};
+        int ping_timeouts{0};
+
+        /// Consecutive ping timeouts right now; any response resets this to 0.  The path is
+        /// abandoned once this exceeds the configured maximum, so a non-zero value here is the
+        /// earliest warning that a path is going bad.
+        int ping_recent_timeouts{0};
+    };
+
+    /// A session's current path, along with the remote the session is with.
+    struct session_path
+    {
+        path_info path;
+
+        /// The session's remote endpoint ("<pubkey>.sesh" or "<pubkey>.snode").  For a relay
+        /// session this is the same as the path's final hop; for a client<->client session it is
+        /// the far client, reached via that final hop as a pivot.
+        std::string remote;
+    };
 
     class SessionRouter
     {
@@ -264,13 +318,13 @@ namespace session::router
         void resolve(std::string address, std::function<void(std::optional<std::string> addr, bool timeout)> callback);
 
         // If we have a session with the given remote, returns the path we are currently using for
-        // that session.  In the case of a client<->client session, this will be the relay which we
-        // are using as a pivot.
+        // that session, along with its statistics.  In the case of a client<->client session, the
+        // final hop will be the relay which we are using as a pivot.
         //
-        // If there is a session but no current path, an empty vector is
-        // returned.
+        // If there is a session but no current path, the returned path_info has no hops and
+        // zeroed statistics.
         // If there is not a session to the remote, std::nullopt is returned.
-        std::optional<snode_path> get_path_for_session(std::string_view remote);
+        std::optional<path_info> get_path_for_session(std::string_view remote);
 
         // Returns the path we're currently using for each session along with the remote endpoint
         // of that session.  In the case of snode (relay) sessions, the remote endpoint will be

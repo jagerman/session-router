@@ -194,12 +194,18 @@ namespace session::router
         }
     }
 
-    static snode_path to_snode_path(const srouter::path::Path::Info& info)
+    static path_info to_path_info(const srouter::path::Path::Info& info)
     {
-        snode_path path;
+        path_info p;
         for (const auto& [rid, ip] : info.relays)
-            path.emplace_back(srouter::NetworkAddress{rid, false}.to_string(), ip.to_string());
-        return path;
+            p.hops.push_back({srouter::NetworkAddress{rid, false}.to_string(), ip.to_string()});
+        p.expiry = info.expiry;
+        p.latency = info.ping_mean;
+        p.jitter = info.ping_jitter;
+        p.ping_responses = info.ping_responses;
+        p.ping_timeouts = info.ping_timeouts;
+        p.ping_recent_timeouts = info.ping_recent_timeouts;
+        return p;
     }
 
     void SessionRouter::resolve(
@@ -235,7 +241,7 @@ namespace session::router
         });
     }
 
-    std::optional<snode_path> SessionRouter::get_path_for_session(std::string_view remote)
+    std::optional<path_info> SessionRouter::get_path_for_session(std::string_view remote)
     {
         srouter::NetworkAddress netaddr;
         try
@@ -249,9 +255,9 @@ namespace session::router
         }
 
         return context->router->_jq->call_get([&r = context->router, addr = std::move(netaddr)]() {
-            std::optional<snode_path> ret;
+            std::optional<path_info> ret;
             if (auto* s = r->session_endpoint().get_session(addr))
-                ret = to_snode_path(s->current_path_info());
+                ret = to_path_info(s->current_path_info());
             return ret;
         });
     }
@@ -262,7 +268,7 @@ namespace session::router
             std::vector<session_path> ret;
             r->session_endpoint().for_each_session(
                 [&ret](const srouter::NetworkAddress& addr, const srouter::session::Session& s) {
-                    ret.emplace_back(to_snode_path(s.current_path_info()), addr.to_string());
+                    ret.push_back({to_path_info(s.current_path_info()), addr.to_string()});
                 });
             return ret;
         });
