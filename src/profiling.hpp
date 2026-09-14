@@ -5,19 +5,17 @@
 #include "util/thread/threading.hpp"
 #include "util/time.hpp"
 
+#include <oxen/quic/loop.hpp>
+
 #include <filesystem>
 #include <map>
+#include <optional>
 
 namespace oxenc
 {
     class bt_dict_consumer;
     class bt_dict_producer;
 }  // namespace oxenc
-
-namespace oxen::quic
-{
-    struct Ticker;
-}
 
 namespace srouter
 {
@@ -70,6 +68,7 @@ namespace srouter
         friend class Router;
 
         Profiling() = default;
+        ~Profiling();
 
         inline static const int profiling_chances{4};
 
@@ -119,7 +118,10 @@ namespace srouter
 
         void BDecode(oxenc::bt_dict_consumer&& dict);
 
-        std::shared_ptr<oxen::quic::Ticker> _disk_saver;
+        // The timer belongs to the loop it was registered on, so we have to remember which one that
+        // was in order to take it off again.
+        oxen::quic::Loop* _disk_loop{nullptr};
+        std::optional<oxen::quic::TimerID> _disk_saver;
 
         mutable util::Mutex _m;
         std::filesystem::path _profile_file;

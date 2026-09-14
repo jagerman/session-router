@@ -190,8 +190,8 @@ namespace srouter::link
     {
         if (router.is_service_node)
         {
-            redundancy_ticker = router.loop().call_every(REDUNDANT_LINGER, [this] { close_redundant(); });
-            dereg_conn_ticker = router.loop().call_every(1min, [this] { check_deregged_conns(); });
+            redundancy_ticker = router.loop().add_timer(REDUNDANT_LINGER, [this] { close_redundant(); });
+            dereg_conn_ticker = router.loop().add_timer(1min, [this] { check_deregged_conns(); });
         }
     }
 
@@ -798,7 +798,17 @@ namespace srouter::link
         });
     }
 
-    Endpoint::~Endpoint() { *canary = false; }
+    Endpoint::~Endpoint()
+    {
+        *canary = false;
+
+        // The loop owns these and outlives us, so they have to be taken off it explicitly or they
+        // would keep firing on a destroyed Endpoint.
+        if (redundancy_ticker)
+            router.loop().remove(*redundancy_ticker);
+        if (dereg_conn_ticker)
+            router.loop().remove(*dereg_conn_ticker);
+    }
 
     void Endpoint::on_conn_closed(quic::Connection& conn, uint64_t ec)
     {

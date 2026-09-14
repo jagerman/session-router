@@ -4,7 +4,10 @@
 #include "contact/router_id.hpp"
 #include "util/time.hpp"
 
+#include <oxen/quic/loop.hpp>
+
 #include <chrono>
+#include <optional>
 #include <queue>
 #include <random>
 #include <unordered_set>
@@ -13,10 +16,6 @@
 namespace srouter
 {
     class Router;
-}
-namespace oxen::quic
-{
-    struct Ticker;
 }
 
 namespace srouter::consensus
@@ -99,8 +98,8 @@ namespace srouter::consensus
       private:
         Router& router;
 
-        std::shared_ptr<oxen::quic::Ticker> ticker;
-        std::shared_ptr<oxen::quic::Ticker> whine_ticker;
+        std::optional<oxen::quic::TimerID> ticker;
+        std::optional<oxen::quic::TimerID> whine_ticker;
 
         // Queue of pubkeys of service nodes to test; we pop off the back of this until the queue
         // empties then we refill it with a shuffled list of all pubkeys then pull off of it until
@@ -122,6 +121,7 @@ namespace srouter::consensus
 
       public:
         explicit reachability_testing(Router& r);
+        ~reachability_testing() override;
 
         // Called by router when it is starting/stopping to start/stop our ticker.
         void start() override;

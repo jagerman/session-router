@@ -9,10 +9,12 @@
 #include <oxen/quic/connection_ids.hpp>
 #include <oxen/quic/endpoint.hpp>
 #include <oxen/quic/gnutls_crypto.hpp>
+#include <oxen/quic/loop.hpp>
 
 #include <array>
 #include <chrono>
 #include <memory>
+#include <optional>
 
 namespace srouter
 {
@@ -121,8 +123,8 @@ namespace srouter::link
         std::unordered_map<quic::ConnectionID, std::shared_ptr<link::Connection>> inbound_clients;
 
         std::shared_ptr<quic::Endpoint> endpoint;
-        std::shared_ptr<quic::Ticker> redundancy_ticker;
-        std::shared_ptr<quic::Ticker> dereg_conn_ticker;
+        std::optional<quic::TimerID> redundancy_ticker;
+        std::optional<quic::TimerID> dereg_conn_ticker;
         std::shared_ptr<quic::GNUTLSCreds> tls_creds;
 
         // Canary object that gets set to false during destruction to help short-circuit lambda that

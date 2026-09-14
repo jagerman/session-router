@@ -258,19 +258,22 @@ namespace srouter
         }
     }
 
+    Profiling::~Profiling() { stop_save_ticker(); }
+
     void Profiling::stop_save_ticker()
     {
         if (_disk_saver)
         {
             log::trace(logcat, "Stopping router profile disk saving");
-            _disk_saver->stop();
+            _disk_loop->remove(*_disk_saver);
             _disk_saver.reset();
         }
     }
 
     void Profiling::start_save_ticker(Router& r)
     {
-        _disk_saver = r.disk_loop.call_every(SAVE_INTERVAL, [this] {
+        _disk_loop = &r.disk_loop;
+        _disk_saver = r.disk_loop.add_timer(SAVE_INTERVAL, [this] {
             log::debug(logcat, "Writing router profiles to disk...");
             save_to_disk();
         });

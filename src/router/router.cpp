@@ -64,9 +64,20 @@ namespace srouter
         });
     }
 
-    // Default, but we define it here because some of the unique_ptrs are for forward-declared types
-    // in router.hpp which aren't available for destruction, but are available here.
-    Router::~Router() = default;
+    // Out-of-line because some of the unique_ptrs are for forward-declared types in router.hpp which
+    // aren't available for destruction, but are available here.
+    //
+    // Router::stop() normally takes the timers off the loop already; this is for a Router destroyed
+    // without a stop, where the loop outlives us and would go on ticking into freed memory.
+    Router::~Router()
+    {
+        if (_loop_ticker)
+            _loop->remove(*_loop_ticker);
+        if (_service_stat_ticker)
+            _loop->remove(*_service_stat_ticker);
+        if (_gossip_ticker)
+            _loop->remove(*_gossip_ticker);
+    }
 
     void Router::start_tickers()
     {
@@ -74,7 +85,7 @@ namespace srouter
             _tun->start_poller();
 
         if (!embedded())
-            _service_stat_ticker = _loop->call_every(SERVICE_MANAGER_REPORT_INTERVAL, [this]() {
+            _service_stat_ticker = _loop->add_timer(SERVICE_MANAGER_REPORT_INTERVAL, [this]() {
                 sys::service_manager->report_periodic_stats(status_line());
             });
 
@@ -99,7 +110,7 @@ namespace srouter
             _jq->call_later(delay, [this] {
                 regenerate_rc();
                 log::debug(logcat, "Starting RC regen ticker");
-                _gossip_ticker = _loop->call_every(RC_UPDATE_INTERVAL, [this] { regenerate_rc(); });
+                _gossip_ticker = _loop->add_timer(RC_UPDATE_INTERVAL, [this] { regenerate_rc(); });
             });
 
             if (not _config.oxend.disable_testing)
@@ -802,7 +813,7 @@ namespace srouter
         }
 
         log::debug(logcat, "Starting Router main tick interval");
-        _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); });
+        _loop_ticker = _loop->add_timer(ROUTER_TICK_INTERVAL, [this] { tick(); });
 
         start_tickers();
         _is_running = true;
@@ -983,15 +994,22 @@ namespace srouter
             if (_tun)
                 _tun->stop();
 
-            auto rv = _loop_ticker->stop();
+            auto rv = _loop->remove(*_loop_ticker);
             log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
             _loop_ticker.reset();
 
             if (_service_stat_ticker)
             {
-                rv = _service_stat_ticker->stop();
+                rv = _loop->remove(*_service_stat_ticker);
                 log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
                 _service_stat_ticker.reset();
+            }
+
+            if (_gossip_ticker)
+            {
+                log::debug(logcat, "clearing RC regen ticker...");
+                _loop->remove(*_gossip_ticker);
+                _gossip_ticker.reset();
             }
 
             if (_reachability_ticker)

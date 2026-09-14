@@ -5,6 +5,8 @@
 #include "util/thread/threading.hpp"
 #include "util/time.hpp"
 
+#include <oxen/quic/loop.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -16,7 +18,6 @@ namespace oxen::quic
 {
     struct message;
     struct Ticker;
-    class Wakeable;
 }  // namespace oxen::quic
 
 namespace srouter
@@ -103,17 +104,18 @@ namespace srouter
 
         std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
 
-        std::shared_ptr<quic::Ticker> _purge_ticker;
+        std::optional<quic::TimerID> _purge_ticker;
 
         std::unordered_map<RouterID, std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>>>
             _0rtt_tickets;
         std::unordered_set<RouterID> _0rtt_dirty;
         std::mutex _0rtt_mutex;
-        std::shared_ptr<quic::Wakeable> _0rtt_saver;
+        std::optional<quic::TimerID> _0rtt_saver;
         void _0rtt_save();
 
       public:
         explicit NodeDB(Router& r);
+        ~NodeDB();
 
         // Starts the nodedb tickers for purge and fetch (clients), and initiates a bootstrap if the
         // nodedb has too few RCs.

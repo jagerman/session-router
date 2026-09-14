@@ -172,13 +172,13 @@ namespace srouter
         std::unique_ptr<ContactDB> _contact_db;
         std::unique_ptr<NodeDB> _node_db;
 
-        std::shared_ptr<quic::Ticker> _loop_ticker;
+        std::optional<quic::TimerID> _loop_ticker;
 
         // Might not be set/used, depending on the platform:
-        std::shared_ptr<quic::Ticker> _service_stat_ticker;
+        std::optional<quic::TimerID> _service_stat_ticker;
         std::shared_ptr<quic::Ticker> _reachability_ticker;
 
-        std::shared_ptr<quic::Ticker> _gossip_ticker;
+        std::optional<quic::TimerID> _gossip_ticker;
 
         steady_ms _last_stats_report{};
         steady_ms _next_dereg_warning{steady_now_ms() + 15s};

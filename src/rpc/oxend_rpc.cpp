@@ -24,6 +24,14 @@ namespace srouter::rpc
         _is_updating_list = false;
     }
 
+    // The ping timer is owned by the loop, which outlives us, so it has to be taken off it here or
+    // it would keep pinging through a destroyed OxendRPC.
+    OxendRPC::~OxendRPC()
+    {
+        if (_ping_ticker)
+            _router.loop().remove(*_ping_ticker);
+    }
+
     void OxendRPC::connect_async(std::string url)
     {
         if (not _router.is_service_node)
@@ -181,7 +189,7 @@ namespace srouter::rpc
 
         log::info(logcat, "Starting OxendRPC ping ticker...");
         ping();
-        _ping_ticker = _router.loop().call_every(PING_INTERVAL, [this] { ping(); });
+        _ping_ticker = _router.loop().add_timer(PING_INTERVAL, [this] { ping(); });
     }
 
     void OxendRPC::handle_new_service_node_list(const nlohmann::json& j)

@@ -707,7 +707,7 @@ namespace srouter
     {
         log::trace(logcat, "NodeDB starting tickers...");
 
-        _purge_ticker = _router.loop().call_every(PURGE_INTERVAL, [this] { purge_rcs(); });
+        _purge_ticker = _router.loop().add_timer(PURGE_INTERVAL, [this] { purge_rcs(); });
 
         auto need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
         if (not has_bootstraps())
@@ -721,8 +721,8 @@ namespace srouter
             _router._jq->call_later(100ms, [this] { fetch_rids(); });
         }
 
-        _0rtt_saver = _router.disk_loop.make_wakeable([this] { _0rtt_save(); });
-        _0rtt_saver->wake();
+        _0rtt_saver = _router.disk_loop.add_wakeable([this] { _0rtt_save(); });
+        _router.disk_loop.wake(*_0rtt_saver);
 
         if (need_bootstrap)
             bootstrap();
@@ -781,6 +781,17 @@ namespace srouter
             create_symlink(
                 std::filesystem::path{_router.id().to_string()}.replace_extension(RC_FILE_EXT), self_signed, ec);
         }
+    }
+
+    // Both timers are owned by loops that outlive us, so they have to come off them here even if
+    // cleanup() already dealt with the purge one.  Neither removal may hold _0rtt_mutex: removing
+    // from off the loop thread waits for a running callback, and _0rtt_save() wants that lock.
+    NodeDB::~NodeDB()
+    {
+        if (_purge_ticker)
+            _router.loop().remove(*_purge_ticker);
+        if (_0rtt_saver)
+            _router.disk_loop.remove(*_0rtt_saver);
     }
 
     void NodeDB::load_bootstrap(const std::filesystem::path& fpath)
@@ -1174,7 +1185,7 @@ namespace srouter
         if (_purge_ticker)
         {
             log::trace(logcat, "NodeDB clearing purge ticker...");
-            _purge_ticker->stop();
+            _router.loop().remove(*_purge_ticker);
             _purge_ticker.reset();
         }
 
@@ -1364,7 +1375,7 @@ namespace srouter
             tickets.pop_front();
         tickets.emplace_back(std::move(data), expiry);
         _0rtt_dirty.insert(rid);
-        _0rtt_saver->wake();
+        _router.disk_loop.wake(*_0rtt_saver);
     }
 
     std::optional<std::vector<unsigned char>> NodeDB::extract_0rtt(const RouterID& rid)
@@ -1385,7 +1396,7 @@ namespace srouter
                 tickets.pop_front();
             }
             _0rtt_dirty.insert(rid);
-            _0rtt_saver->wake();
+            _router.disk_loop.wake(*_0rtt_saver);
         }
         return ret;
     }

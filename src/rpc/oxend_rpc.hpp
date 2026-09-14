@@ -5,13 +5,12 @@
 #include "rpc/oxend_client.hpp"
 #include "util/logging.hpp"
 
+#include <oxen/quic/loop.hpp>
 #include <oxenmq/address.h>
 #include <oxenmq/oxenmq.h>
 
-namespace oxen::quic
-{
-    struct Ticker;
-}
+#include <optional>
+
 namespace srouter
 {
     class Router;
@@ -27,6 +26,7 @@ namespace srouter::rpc
     {
       public:
         OxendRPC(oxenmq::OxenMQ& omq, Router& r);
+        ~OxendRPC() override;
 
         /// Connect to oxend async
         void connect_async(std::string url) override;
@@ -77,7 +77,7 @@ namespace srouter::rpc
         // Handles notification of a new block
         void handle_new_block(oxenmq::Message& msg);
 
-        std::shared_ptr<oxen::quic::Ticker> _ping_ticker;
+        std::optional<oxen::quic::TimerID> _ping_ticker;
 
         std::optional<oxenmq::ConnectionID> _conn;
         oxenmq::OxenMQ& _omq;

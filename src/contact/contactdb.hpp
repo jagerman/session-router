@@ -2,10 +2,9 @@
 
 #include "client_contact.hpp"
 
-namespace oxen::quic
-{
-    struct Ticker;
-}
+#include <oxen/quic/loop.hpp>
+
+#include <optional>
 
 namespace srouter
 {
@@ -34,10 +33,11 @@ namespace srouter
         // blinded pubkey -> {record, signed_at}
         std::unordered_map<PubKey, std::pair<std::string, sys_ms>> _storage;
 
-        std::shared_ptr<quic::Ticker> _purge_ticker;
+        std::optional<quic::TimerID> _purge_ticker;
 
       public:
         explicit ContactDB(Router& r);
+        ~ContactDB();
 
         std::optional<std::string_view> get_encrypted_cc(
             const PubKey& blinded_pk, std::optional<sys_ms> now = std::nullopt) const;

@@ -12,6 +12,14 @@ namespace srouter
 
     ContactDB::ContactDB(Router& r) : _router{r} {}
 
+    // The purge timer is owned by the loop, which outlives us, so it has to come off it here or it
+    // would keep firing purge_ccs() on a destroyed ContactDB.
+    ContactDB::~ContactDB()
+    {
+        if (_purge_ticker)
+            _router.loop().remove(*_purge_ticker);
+    }
+
     std::optional<std::string_view> ContactDB::get_encrypted_cc(
         const PubKey& blinded_key, std::optional<sys_ms> now) const
     {
@@ -28,7 +36,7 @@ namespace srouter
 
     void ContactDB::start_tickers()
     {
-        _purge_ticker = _router.loop().call_every(30s, [this]() { purge_ccs(); }, true);
+        _purge_ticker = _router.loop().add_timer(30s, [this]() { purge_ccs(); });
     }
 
     void ContactDB::purge_ccs(sys_ms now)
