@@ -68,7 +68,6 @@ namespace srouter
         friend class Router;
 
         Profiling() = default;
-        ~Profiling();
 
         inline static const int profiling_chances{4};
 
@@ -110,17 +109,17 @@ namespace srouter
         bool is_enabled() const;
 
       private:
-        void start_save_ticker(Router& r);
+        void start_save_timer(Router& r);
 
-        void stop_save_ticker();
+        void stop_save_timer();
 
         std::string BEncode() const;
 
         void BDecode(oxenc::bt_dict_consumer&& dict);
 
-        // The timer belongs to the loop it was registered on, so we have to remember which one that
-        // was in order to take it off again.
-        oxen::quic::Loop* _disk_loop{nullptr};
+        // The timer belongs to the queue it was registered on, so we have to remember which one
+        // that was in order to take it off again.
+        oxen::quic::JobQueue* _disk_jq{nullptr};
         std::optional<oxen::quic::TimerID> _disk_saver;
 
         mutable util::Mutex _m;

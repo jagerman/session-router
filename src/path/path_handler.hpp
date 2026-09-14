@@ -12,11 +12,6 @@
 #include <ranges>
 #include <unordered_map>
 
-namespace oxen::quic
-{
-    struct Ticker;
-}
-
 namespace srouter
 {
     class Router;

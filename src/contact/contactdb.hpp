@@ -33,11 +33,10 @@ namespace srouter
         // blinded pubkey -> {record, signed_at}
         std::unordered_map<PubKey, std::pair<std::string, sys_ms>> _storage;
 
-        std::optional<quic::TimerID> _purge_ticker;
+        std::optional<quic::TimerID> _purge_timer;
 
       public:
         explicit ContactDB(Router& r);
-        ~ContactDB();
 
         std::optional<std::string_view> get_encrypted_cc(
             const PubKey& blinded_pk, std::optional<sys_ms> now = std::nullopt) const;
@@ -48,7 +47,7 @@ namespace srouter
         // failed).
         bool put_cc(std::string enc);
 
-        void start_tickers();
+        void start_timers();
 
         size_t num_ccs() const;
 

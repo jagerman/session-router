@@ -705,9 +705,9 @@ namespace srouter
 
     void NodeDB::start()
     {
-        log::trace(logcat, "NodeDB starting tickers...");
+        log::trace(logcat, "NodeDB starting timers...");
 
-        _purge_ticker = _router.loop().add_timer(PURGE_INTERVAL, [this] { purge_rcs(); });
+        _purge_timer = _router._jq->add_timer(PURGE_INTERVAL, [this] { purge_rcs(); });
 
         auto need_bootstrap = num_rcs() < MIN_ACTIVE_RCS;
         if (not has_bootstraps())
@@ -721,8 +721,8 @@ namespace srouter
             _router._jq->call_later(100ms, [this] { fetch_rids(); });
         }
 
-        _0rtt_saver = _router.disk_loop.add_wakeable([this] { _0rtt_save(); });
-        _router.disk_loop.wake(*_0rtt_saver);
+        _0rtt_saver = _router.disk_jq.add_wakeable([this] { _0rtt_save(); });
+        _router.disk_jq.wake(*_0rtt_saver);
 
         if (need_bootstrap)
             bootstrap();
@@ -781,17 +781,6 @@ namespace srouter
             create_symlink(
                 std::filesystem::path{_router.id().to_string()}.replace_extension(RC_FILE_EXT), self_signed, ec);
         }
-    }
-
-    // Both timers are owned by loops that outlive us, so they have to come off them here even if
-    // cleanup() already dealt with the purge one.  Neither removal may hold _0rtt_mutex: removing
-    // from off the loop thread waits for a running callback, and _0rtt_save() wants that lock.
-    NodeDB::~NodeDB()
-    {
-        if (_purge_ticker)
-            _router.loop().remove(*_purge_ticker);
-        if (_0rtt_saver)
-            _router.disk_loop.remove(*_0rtt_saver);
     }
 
     void NodeDB::load_bootstrap(const std::filesystem::path& fpath)
@@ -1182,14 +1171,14 @@ namespace srouter
 
     void NodeDB::cleanup()
     {
-        if (_purge_ticker)
+        if (_purge_timer)
         {
-            log::trace(logcat, "NodeDB clearing purge ticker...");
-            _router.loop().remove(*_purge_ticker);
-            _purge_ticker.reset();
+            log::trace(logcat, "NodeDB clearing purge timer...");
+            _router._jq->remove(*_purge_timer);
+            _purge_timer.reset();
         }
 
-        log::debug(logcat, "NodeDB cleared all tickers...");
+        log::debug(logcat, "NodeDB cleared all timers...");
     }
 
     const RelayContact* NodeDB::get_rc(const RouterID& pk) const
@@ -1375,7 +1364,7 @@ namespace srouter
             tickets.pop_front();
         tickets.emplace_back(std::move(data), expiry);
         _0rtt_dirty.insert(rid);
-        _router.disk_loop.wake(*_0rtt_saver);
+        _router.disk_jq.wake(*_0rtt_saver);
     }
 
     std::optional<std::vector<unsigned char>> NodeDB::extract_0rtt(const RouterID& rid)
@@ -1396,7 +1385,7 @@ namespace srouter
                 tickets.pop_front();
             }
             _0rtt_dirty.insert(rid);
-            _router.disk_loop.wake(*_0rtt_saver);
+            _router.disk_jq.wake(*_0rtt_saver);
         }
         return ret;
     }

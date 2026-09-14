@@ -17,7 +17,6 @@
 namespace oxen::quic
 {
     struct message;
-    struct Ticker;
 }  // namespace oxen::quic
 
 namespace srouter
@@ -102,7 +101,7 @@ namespace srouter
         std::filesystem::path get_path_by_pubkey(
             const RouterID& pk, const std::filesystem::path& extension = RC_FILE_EXT) const;
 
-        std::optional<quic::TimerID> _purge_ticker;
+        std::optional<quic::TimerID> _purge_timer;
 
         std::unordered_map<RouterID, std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>>>
             _0rtt_tickets;
@@ -113,9 +112,8 @@ namespace srouter
 
       public:
         explicit NodeDB(Router& r);
-        ~NodeDB();
 
-        // Starts the nodedb tickers for purge and fetch (clients), and initiates a bootstrap if the
+        // Starts the nodedb timers for purge and fetch (clients), and initiates a bootstrap if the
         // nodedb has too few RCs.
         void start();
 

@@ -168,16 +168,21 @@ namespace srouter
         // is up here because it must destroy after _node_db, which uses it.)
         quic::Loop disk_loop;
 
+        // Job queue for disk_loop, for the same reason as _jq: ~Router stops it before any member
+        // is destroyed, which cancels the disk timers registered on it.  Declared after disk_loop
+        // so that it dies first.
+        quic::JobQueue disk_jq{disk_loop};
+
       private:
         std::unique_ptr<ContactDB> _contact_db;
         std::unique_ptr<NodeDB> _node_db;
 
-        std::optional<quic::TimerID> _loop_ticker;
+        std::optional<quic::TimerID> _tick_timer;
 
         // Might not be set/used, depending on the platform:
-        std::optional<quic::TimerID> _service_stat_ticker;
+        std::optional<quic::TimerID> _service_stat_timer;
 
-        std::optional<quic::TimerID> _gossip_ticker;
+        std::optional<quic::TimerID> _gossip_timer;
 
         steady_ms _last_stats_report{};
         steady_ms _next_dereg_warning{steady_now_ms() + 15s};
@@ -217,7 +222,7 @@ namespace srouter
 
         void tick();
 
-        void start_tickers();
+        void start_timers();
 
       public:
         path::PathContext path_context{*this};

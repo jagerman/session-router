@@ -98,8 +98,8 @@ namespace srouter::consensus
       private:
         Router& router;
 
-        std::optional<oxen::quic::TimerID> ticker;
-        std::optional<oxen::quic::TimerID> whine_ticker;
+        std::optional<oxen::quic::TimerID> test_timer;
+        std::optional<oxen::quic::TimerID> whine_timer;
 
         // Queue of pubkeys of service nodes to test; we pop off the back of this until the queue
         // empties then we refill it with a shuffled list of all pubkeys then pull off of it until
@@ -121,9 +121,8 @@ namespace srouter::consensus
 
       public:
         explicit reachability_testing(Router& r);
-        ~reachability_testing() override;
 
-        // Called by router when it is starting/stopping to start/stop our ticker.
+        // Called by router when it is starting/stopping to start/stop our timers.
         void start() override;
         void stop() override;
 

@@ -18,33 +18,29 @@ namespace srouter::consensus
 
     reachability_testing::reachability_testing(Router& r) : router{r} {}
 
-    // The loop outlives us and keeps running the timers we registered, so they have to come off it
-    // here even if Router::stop() already did it.
-    reachability_testing::~reachability_testing() { reachability_testing::stop(); }
-
     void reachability_testing::start()
     {
         if (router.config().oxend.disable_testing)
             log::warning(logcat, "Reachability testing DISABLED in config");
         else
         {
-            log::debug(logcat, "Starting reachability testing tickers");
-            ticker = router.loop().add_timer(TEST_INTERVAL, [this] { tick(); });
-            whine_ticker = router.loop().add_timer(30s, [this] { check_incoming_tests(); });
+            log::debug(logcat, "Starting reachability testing timers");
+            test_timer = router._jq->add_timer(TEST_INTERVAL, [this] { tick(); });
+            whine_timer = router._jq->add_timer(30s, [this] { check_incoming_tests(); });
         }
     }
 
     void reachability_testing::stop()
     {
-        if (ticker)
+        if (test_timer)
         {
-            router.loop().remove(*ticker);
-            ticker.reset();
+            router._jq->remove(*test_timer);
+            test_timer.reset();
         }
-        if (whine_ticker)
+        if (whine_timer)
         {
-            router.loop().remove(*whine_ticker);
-            whine_ticker.reset();
+            router._jq->remove(*whine_timer);
+            whine_timer.reset();
         }
     }
 

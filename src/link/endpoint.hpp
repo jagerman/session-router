@@ -31,7 +31,7 @@ namespace srouter::link
     // buffer is to allow any messages or data to be handled that might have been send down the
     // less-preferred connection before both directions were established.
     //
-    // We also use this value as a ticker interval, so redundant connections can stay alive up to
+    // We also use this value as a timer interval, so redundant connections can stay alive up to
     // twice this value.
     inline constexpr auto REDUNDANT_LINGER = 20s;
 
@@ -123,8 +123,8 @@ namespace srouter::link
         std::unordered_map<quic::ConnectionID, std::shared_ptr<link::Connection>> inbound_clients;
 
         std::shared_ptr<quic::Endpoint> endpoint;
-        std::optional<quic::TimerID> redundancy_ticker;
-        std::optional<quic::TimerID> dereg_conn_ticker;
+        std::optional<quic::TimerID> redundancy_timer;
+        std::optional<quic::TimerID> dereg_conn_timer;
         std::shared_ptr<quic::GNUTLSCreds> tls_creds;
 
         // Canary object that gets set to false during destruction to help short-circuit lambda that
@@ -135,7 +135,7 @@ namespace srouter::link
         // Returns the max UDP payload cap configured on the QUIC endpoint, if any.
         std::optional<size_t> get_max_udp_payload() const { return endpoint->get_max_udp_payload(); }
 
-        void start_tickers();
+        void start_timers();
 
         // Returns the connection to the given relay.  If there are established connections in both
         // directions (i.e. when running as a relay), this returns the mutually preferred one.
