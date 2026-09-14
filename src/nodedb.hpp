@@ -102,8 +102,6 @@ namespace srouter
         std::filesystem::path get_path_by_pubkey(
             const RouterID& pk, const std::filesystem::path& extension = RC_FILE_EXT) const;
 
-        std::shared_ptr<quic::Ticker> _rid_fetch_ticker;
-
         std::optional<quic::TimerID> _purge_ticker;
 
         std::unordered_map<RouterID, std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>>>

@@ -231,12 +231,6 @@ namespace srouter::path
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _running = false;
 
-        if (_path_rotater)
-        {
-            _path_rotater.reset();
-            log::trace(logcat, "Path rotation ticker stopped!");
-        }
-
         _paths.clear();
     }
 

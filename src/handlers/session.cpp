@@ -174,12 +174,6 @@ namespace srouter::handlers
 
         _running = false;
 
-        if (_path_rotater)
-        {
-            _path_rotater.reset();
-            log::trace(logcat, "Path rotation ticker stopped!");
-        }
-
         // Do a best-effort close; if send_close is true these close(true) calls should queue a
         // path_close on the active stream, even though we immediately drop the streams below, which
         // should still typically arrive at the other side.

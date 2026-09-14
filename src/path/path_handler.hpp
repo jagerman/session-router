@@ -37,8 +37,6 @@ namespace srouter
             Router& router;
 
           protected:
-            std::shared_ptr<quic::Ticker> _path_rotater;
-
             /// flag for ::Stop()
             std::atomic<bool> _running;
 

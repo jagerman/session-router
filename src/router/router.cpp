@@ -1012,13 +1012,6 @@ namespace srouter
                 _gossip_ticker.reset();
             }
 
-            if (_reachability_ticker)
-            {
-                log::debug(logcat, "clearing reachability ticker...");
-                _reachability_ticker->stop();
-                _reachability_ticker.reset();
-            }
-
             log::debug(logcat, "stopping nodedb events");
             node_db().cleanup();
 

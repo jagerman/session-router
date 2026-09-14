@@ -176,7 +176,6 @@ namespace srouter
 
         // Might not be set/used, depending on the platform:
         std::optional<quic::TimerID> _service_stat_ticker;
-        std::shared_ptr<quic::Ticker> _reachability_ticker;
 
         std::optional<quic::TimerID> _gossip_ticker;
 
