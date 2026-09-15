@@ -5,7 +5,7 @@
 #include "rpc/oxend_client.hpp"
 #include "util/logging.hpp"
 
-#include <oxen/quic/loop.hpp>
+#include <oxen/quic/timer_id.hpp>
 #include <oxenmq/address.h>
 #include <oxenmq/oxenmq.h>
 

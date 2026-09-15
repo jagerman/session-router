@@ -2,7 +2,7 @@
 
 #include "client_contact.hpp"
 
-#include <oxen/quic/loop.hpp>
+#include <oxen/quic/timer_id.hpp>
 
 #include <optional>
 

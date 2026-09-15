@@ -5,7 +5,7 @@
 #include "util/thread/threading.hpp"
 #include "util/time.hpp"
 
-#include <oxen/quic/loop.hpp>
+#include <oxen/quic/timer_id.hpp>
 
 #include <filesystem>
 #include <map>
@@ -15,6 +15,11 @@ namespace oxenc
     class bt_dict_consumer;
     class bt_dict_producer;
 }  // namespace oxenc
+
+namespace oxen::quic
+{
+    class JobQueue;
+}
 
 namespace srouter
 {

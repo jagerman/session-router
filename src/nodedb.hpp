@@ -5,7 +5,7 @@
 #include "util/thread/threading.hpp"
 #include "util/time.hpp"
 
-#include <oxen/quic/loop.hpp>
+#include <oxen/quic/timer_id.hpp>
 
 #include <atomic>
 #include <chrono>
