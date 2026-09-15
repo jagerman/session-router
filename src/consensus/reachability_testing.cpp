@@ -20,6 +20,10 @@ namespace srouter::consensus
 
     void reachability_testing::start()
     {
+        // Overwriting a live id would orphan its timer on the queue, still ticking and no longer
+        // reachable by stop().
+        reachability_testing::stop();
+
         if (router.config().oxend.disable_testing)
             log::warning(logcat, "Reachability testing DISABLED in config");
         else

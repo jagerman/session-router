@@ -270,6 +270,10 @@ namespace srouter
 
     void Profiling::start_save_timer(Router& r)
     {
+        // Overwriting a live id would orphan its timer on the queue, still saving and no longer
+        // reachable by stop_save_timer().
+        stop_save_timer();
+
         _disk_jq = &r.disk_jq;
         _disk_saver = r.disk_jq.add_timer(SAVE_INTERVAL, [this] {
             log::debug(logcat, "Writing router profiles to disk...");
