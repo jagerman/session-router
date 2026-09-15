@@ -34,13 +34,13 @@ namespace srouter::consensus
     {
         if (test_timer)
         {
-            router._jq->remove(*test_timer);
-            test_timer.reset();
+            router._jq->remove(test_timer);
+            test_timer = {};
         }
         if (whine_timer)
         {
-            router._jq->remove(*whine_timer);
-            whine_timer.reset();
+            router._jq->remove(whine_timer);
+            whine_timer = {};
         }
     }
 

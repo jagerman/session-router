@@ -722,7 +722,7 @@ namespace srouter
         }
 
         _0rtt_saver = _router.disk_jq.add_wakeable([this] { _0rtt_save(); });
-        _router.disk_jq.wake(*_0rtt_saver);
+        _router.disk_jq.wake(_0rtt_saver);
 
         if (need_bootstrap)
             bootstrap();
@@ -1174,8 +1174,8 @@ namespace srouter
         if (_purge_timer)
         {
             log::trace(logcat, "NodeDB clearing purge timer...");
-            _router._jq->remove(*_purge_timer);
-            _purge_timer.reset();
+            _router._jq->remove(_purge_timer);
+            _purge_timer = {};
         }
 
         if (_0rtt_saver)
@@ -1185,8 +1185,8 @@ namespace srouter
             // waits for a running _0rtt_save(), which wants that lock.
             log::trace(logcat, "NodeDB flushing 0-RTT tickets...");
             _0rtt_save();
-            _router.disk_jq.remove(*_0rtt_saver);
-            _0rtt_saver.reset();
+            _router.disk_jq.remove(_0rtt_saver);
+            _0rtt_saver = {};
         }
 
         log::debug(logcat, "NodeDB cleared all timers...");
@@ -1378,7 +1378,7 @@ namespace srouter
         // The gnutls 0-RTT callbacks that reach here fire off the quic endpoint, which outlives
         // cleanup(), so the saver may already be gone; waking a timer that no longer exists throws.
         if (_0rtt_saver)
-            _router.disk_jq.wake(*_0rtt_saver);
+            _router.disk_jq.wake(_0rtt_saver);
     }
 
     std::optional<std::vector<unsigned char>> NodeDB::extract_0rtt(const RouterID& rid)
@@ -1400,7 +1400,7 @@ namespace srouter
             }
             _0rtt_dirty.insert(rid);
             if (_0rtt_saver)
-                _router.disk_jq.wake(*_0rtt_saver);
+                _router.disk_jq.wake(_0rtt_saver);
         }
         return ret;
     }

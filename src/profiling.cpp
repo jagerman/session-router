@@ -263,8 +263,8 @@ namespace srouter
         if (_disk_saver)
         {
             log::trace(logcat, "Stopping router profile disk saving");
-            _disk_jq->remove(*_disk_saver);
-            _disk_saver.reset();
+            _disk_jq->remove(_disk_saver);
+            _disk_saver = {};
         }
     }
 

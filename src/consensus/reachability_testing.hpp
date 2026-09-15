@@ -98,8 +98,8 @@ namespace srouter::consensus
       private:
         Router& router;
 
-        std::optional<oxen::quic::TimerID> test_timer;
-        std::optional<oxen::quic::TimerID> whine_timer;
+        oxen::quic::TimerID test_timer;
+        oxen::quic::TimerID whine_timer;
 
         // Queue of pubkeys of service nodes to test; we pop off the back of this until the queue
         // empties then we refill it with a shuffled list of all pubkeys then pull off of it until

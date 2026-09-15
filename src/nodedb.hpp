@@ -101,13 +101,13 @@ namespace srouter
         std::filesystem::path get_path_by_pubkey(
             const RouterID& pk, const std::filesystem::path& extension = RC_FILE_EXT) const;
 
-        std::optional<quic::TimerID> _purge_timer;
+        quic::TimerID _purge_timer;
 
         std::unordered_map<RouterID, std::list<std::pair<std::vector<unsigned char>, std::chrono::sys_seconds>>>
             _0rtt_tickets;
         std::unordered_set<RouterID> _0rtt_dirty;
         std::mutex _0rtt_mutex;
-        std::optional<quic::TimerID> _0rtt_saver;
+        quic::TimerID _0rtt_saver;
         void _0rtt_save();
 
       public:

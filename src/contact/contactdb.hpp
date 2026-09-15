@@ -33,7 +33,7 @@ namespace srouter
         // blinded pubkey -> {record, signed_at}
         std::unordered_map<PubKey, std::pair<std::string, sys_ms>> _storage;
 
-        std::optional<quic::TimerID> _purge_timer;
+        quic::TimerID _purge_timer;
 
       public:
         explicit ContactDB(Router& r);

@@ -993,22 +993,22 @@ namespace srouter
             if (_tun)
                 _tun->stop();
 
-            auto rv = _jq->remove(*_tick_timer);
+            auto rv = _jq->remove(_tick_timer);
             log::debug(logcat, "router tick timer stopped {}successfully!", rv ? "" : "un");
-            _tick_timer.reset();
+            _tick_timer = {};
 
             if (_service_stat_timer)
             {
-                rv = _jq->remove(*_service_stat_timer);
+                rv = _jq->remove(_service_stat_timer);
                 log::debug(logcat, "service stat timer stopped {}successfully!", rv ? "" : "un");
-                _service_stat_timer.reset();
+                _service_stat_timer = {};
             }
 
             if (_gossip_timer)
             {
                 log::debug(logcat, "clearing RC regen timer...");
-                _jq->remove(*_gossip_timer);
-                _gossip_timer.reset();
+                _jq->remove(_gossip_timer);
+                _gossip_timer = {};
             }
 
             log::debug(logcat, "stopping nodedb events");

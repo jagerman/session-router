@@ -123,8 +123,8 @@ namespace srouter::link
         std::unordered_map<quic::ConnectionID, std::shared_ptr<link::Connection>> inbound_clients;
 
         std::shared_ptr<quic::Endpoint> endpoint;
-        std::optional<quic::TimerID> redundancy_timer;
-        std::optional<quic::TimerID> dereg_conn_timer;
+        quic::TimerID redundancy_timer;
+        quic::TimerID dereg_conn_timer;
         std::shared_ptr<quic::GNUTLSCreds> tls_creds;
 
         // Canary object that gets set to false during destruction to help short-circuit lambda that

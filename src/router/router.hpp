@@ -177,12 +177,12 @@ namespace srouter
         std::unique_ptr<ContactDB> _contact_db;
         std::unique_ptr<NodeDB> _node_db;
 
-        std::optional<quic::TimerID> _tick_timer;
+        quic::TimerID _tick_timer;
 
         // Might not be set/used, depending on the platform:
-        std::optional<quic::TimerID> _service_stat_timer;
+        quic::TimerID _service_stat_timer;
 
-        std::optional<quic::TimerID> _gossip_timer;
+        quic::TimerID _gossip_timer;
 
         steady_ms _last_stats_report{};
         steady_ms _next_dereg_warning{steady_now_ms() + 15s};

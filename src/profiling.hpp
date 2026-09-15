@@ -9,7 +9,6 @@
 
 #include <filesystem>
 #include <map>
-#include <optional>
 
 namespace oxenc
 {
@@ -120,7 +119,7 @@ namespace srouter
         // The timer belongs to the queue it was registered on, so we have to remember which one
         // that was in order to take it off again.
         oxen::quic::JobQueue* _disk_jq{nullptr};
-        std::optional<oxen::quic::TimerID> _disk_saver;
+        oxen::quic::TimerID _disk_saver;
 
         mutable util::Mutex _m;
         std::filesystem::path _profile_file;
