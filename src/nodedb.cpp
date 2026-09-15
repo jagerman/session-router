@@ -1178,6 +1178,17 @@ namespace srouter
             _purge_timer.reset();
         }
 
+        if (_0rtt_saver)
+        {
+            // Removing cancels any wake that hasn't run yet, so flush first or we drop the tickets
+            // it was woken for.  This must not hold _0rtt_mutex: removing from off the disk loop
+            // waits for a running _0rtt_save(), which wants that lock.
+            log::trace(logcat, "NodeDB flushing 0-RTT tickets...");
+            _0rtt_save();
+            _router.disk_jq.remove(*_0rtt_saver);
+            _0rtt_saver.reset();
+        }
+
         log::debug(logcat, "NodeDB cleared all timers...");
     }
 
@@ -1364,7 +1375,10 @@ namespace srouter
             tickets.pop_front();
         tickets.emplace_back(std::move(data), expiry);
         _0rtt_dirty.insert(rid);
-        _router.disk_jq.wake(*_0rtt_saver);
+        // The gnutls 0-RTT callbacks that reach here fire off the quic endpoint, which outlives
+        // cleanup(), so the saver may already be gone; waking a timer that no longer exists throws.
+        if (_0rtt_saver)
+            _router.disk_jq.wake(*_0rtt_saver);
     }
 
     std::optional<std::vector<unsigned char>> NodeDB::extract_0rtt(const RouterID& rid)
@@ -1385,7 +1399,8 @@ namespace srouter
                 tickets.pop_front();
             }
             _0rtt_dirty.insert(rid);
-            _router.disk_jq.wake(*_0rtt_saver);
+            if (_0rtt_saver)
+                _router.disk_jq.wake(*_0rtt_saver);
         }
         return ret;
     }
