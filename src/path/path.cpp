@@ -22,8 +22,8 @@ namespace srouter::path
 
     size_t Path::next_path_log_id = 0;
 
-    Path::Path(Router& rtr, std::span<const RelayContact> hop_rcs, PathHandler& handler, sys_ms expiry_ts)
-        : handler{handler.weak_from_this()}, _router{rtr}, _expiry{expiry_ts}, path_log_id{++next_path_log_id}
+    Path::Path(Router& rtr, std::span<const RelayContact> hop_rcs, sys_ms expiry_ts)
+        : _router{rtr}, _expiry{expiry_ts}, path_log_id{++next_path_log_id}
     {
         hops.resize(hop_rcs.size());
 

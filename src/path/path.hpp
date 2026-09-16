@@ -30,8 +30,6 @@ namespace srouter
 
 namespace srouter::path
 {
-    class PathHandler;
-
     /// Proxy object to produce a human readable hop list in log statements on demand.  This
     /// object is only intended to be used directly in format or log statements and not held.
     struct path_hop_stringifier
@@ -70,7 +68,7 @@ namespace srouter::path
     class Path final : public std::enable_shared_from_this<Path>
     {
       public:
-        Path(Router& rtr, std::span<const RelayContact> hop_rcs, PathHandler& handler, sys_ms expiry_ts);
+        Path(Router& rtr, std::span<const RelayContact> hop_rcs, sys_ms expiry_ts);
 
         // hops on constructed path
         std::vector<TransitHop> hops;
@@ -78,8 +76,6 @@ namespace srouter::path
         // If set, this is an aligned path to a pivot and this value is the hopid required to
         // send data through the pivot.
         std::optional<HopID> aligned_hopid;
-
-        std::weak_ptr<PathHandler> handler;
 
         // Constructs a ClientInfo from this path, i.e. for including in a client contact.
         ClientIntro make_intro() const;

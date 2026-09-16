@@ -180,13 +180,11 @@ namespace srouter::handlers
         for (auto& s : std::views::values(_sessions))
             s->close(send_close);
 
-        // Note: we intentionally do NOT clear _sessions here.  Session objects (which are also
-        // PathHandlers) may still be referenced by pending QUIC stream callbacks (e.g. path build
-        // timeouts) that fire asynchronously after this stop() call returns.  Clearing the sessions
-        // here would free those PathHandler objects while their callbacks are still queued, leading
-        // to use-after-free.  Instead, we let _sessions be cleaned up naturally when this
-        // SessionEndpoint is destroyed (which happens during `delete router`, after all such
-        // callbacks have been drained from the event loop).
+        // Note: we do not clear _sessions here, letting it be cleaned up when this SessionEndpoint
+        // is destroyed during `delete router` instead.  This was originally load-bearing: a pending
+        // path-build callback held its PathHandler raw, so freeing the sessions here was a
+        // use-after-free.  Those callbacks check the handler's canary now, so clearing here would
+        // be safe; it is left alone only because nothing needs it to change.
         _session_tags.clear();
 
         path::PathHandler::stop();

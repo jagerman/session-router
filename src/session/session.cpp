@@ -1263,19 +1263,26 @@ namespace srouter::session
         : OutboundSession{
               remote, parent, parent.router.config().paths.relay_hops(), inbound_tag, std::move(on_est), on_est_timeout}
     {
-        _parent.lookup_relay_contact(_remote.pubkey, [this](std::optional<srouter::RelayContact> rc) mutable {
-            if (rc)
-            {
-                log::debug(logcat, "Relay contact for {} found: {}", _remote, *rc);
-                // Tick ourself to start building paths without waiting for the next scheduled tick
-                tick(srouter::time_now_ms());
-            }
-            else
-            {
-                log::debug(logcat, "RC lookup failed for {}; relay is unreachable", _remote);
-                mark_unreachable();
-            }
-        });
+        // NodeDB::lookup_rc answers inline when the RC is already known, so this can run before the
+        // constructor returns; it can equally be deferred until after we have been destroyed, hence
+        // the canary.
+        _parent.lookup_relay_contact(
+            _remote.pubkey, [this, alive = canary()](std::optional<srouter::RelayContact> rc) mutable {
+                if (not alive.lock())
+                    return;
+
+                if (rc)
+                {
+                    log::debug(logcat, "Relay contact for {} found: {}", _remote, *rc);
+                    // Tick ourself to start building paths without waiting for the next scheduled tick
+                    tick(srouter::time_now_ms());
+                }
+                else
+                {
+                    log::debug(logcat, "RC lookup failed for {}; relay is unreachable", _remote);
+                    mark_unreachable();
+                }
+            });
     }
 
     void OutboundSession::select_new_current_impl(
