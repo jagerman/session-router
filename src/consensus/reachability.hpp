@@ -10,7 +10,7 @@ namespace srouter::consensus
     {
         virtual ~IReachability() = default;
 
-        // Start/stop the reachability testing ticker.
+        // Start/stop the reachability testing timers.
         virtual void start() = 0;
         virtual void stop() = 0;
 

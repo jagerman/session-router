@@ -186,12 +186,12 @@ namespace srouter::link
         }
     }
 
-    void Endpoint::start_tickers()
+    void Endpoint::start_timers()
     {
         if (router.is_service_node)
         {
-            redundancy_ticker = router.loop().call_every(REDUNDANT_LINGER, [this] { close_redundant(); });
-            dereg_conn_ticker = router.loop().call_every(1min, [this] { check_deregged_conns(); });
+            redundancy_timer = router._jq->add_timer(REDUNDANT_LINGER, [this] { close_redundant(); });
+            dereg_conn_timer = router._jq->add_timer(1min, [this] { check_deregged_conns(); });
         }
     }
 

@@ -64,23 +64,33 @@ namespace srouter
         });
     }
 
-    // Default, but we define it here because some of the unique_ptrs are for forward-declared types
-    // in router.hpp which aren't available for destruction, but are available here.
-    Router::~Router() = default;
+    // Out-of-line because some of the unique_ptrs are for forward-declared types in router.hpp which
+    // aren't available for destruction, but are available here.
+    //
+    // Stopping the queues has to happen here, before any member is destroyed: they own every timer
+    // and pending job in the router, all of which reference members that are about to go away.  (The
+    // queues themselves are destroyed far too late for this -- they are declared near the top of
+    // Router so that components can use them during construction, which makes them almost the last
+    // things to die.)
+    Router::~Router()
+    {
+        _jq->stop();
+        disk_jq.stop();
+    }
 
-    void Router::start_tickers()
+    void Router::start_timers()
     {
         if (_tun)
             _tun->start_poller();
 
         if (!embedded())
-            _service_stat_ticker = _loop->call_every(SERVICE_MANAGER_REPORT_INTERVAL, [this]() {
+            _service_stat_timer = _jq->add_timer(SERVICE_MANAGER_REPORT_INTERVAL, [this]() {
                 sys::service_manager->report_periodic_stats(status_line());
             });
 
         _node_db->start();
-        _contact_db->start_tickers();
-        _link_endpoint->start_tickers();
+        _contact_db->start_timers();
+        _link_endpoint->start_timers();
 
         if (is_service_node)
         {
@@ -98,8 +108,8 @@ namespace srouter
             log::debug(logcat, "Delaying initial RC broadcast for {}", delay);
             _jq->call_later(delay, [this] {
                 regenerate_rc();
-                log::debug(logcat, "Starting RC regen ticker");
-                _gossip_ticker = _loop->call_every(RC_UPDATE_INTERVAL, [this] { regenerate_rc(); });
+                log::debug(logcat, "Starting RC regen timer");
+                _gossip_timer = _jq->add_timer(RC_UPDATE_INTERVAL, [this] { regenerate_rc(); });
             });
 
             if (not _config.oxend.disable_testing)
@@ -791,7 +801,7 @@ namespace srouter
             if (_config.network.save_profiles)
             {
                 log::debug(logcat, "Router profile saving enabled");
-                _router_profiling.start_save_ticker(*this);
+                _router_profiling.start_save_timer(*this);
             }
         }
         else
@@ -802,9 +812,9 @@ namespace srouter
         }
 
         log::debug(logcat, "Starting Router main tick interval");
-        _loop_ticker = _loop->call_every(ROUTER_TICK_INTERVAL, [this] { tick(); });
+        _tick_timer = _jq->add_timer(ROUTER_TICK_INTERVAL, [this] { tick(); });
 
-        start_tickers();
+        start_timers();
         _is_running = true;
 
         if (!embedded())
@@ -972,7 +982,7 @@ namespace srouter
             _session_endpoint->stop(true);
 
             if (not is_service_node)
-                _router_profiling.stop_save_ticker();
+                _router_profiling.stop_save_timer();
 
             log::debug(logcat, "closing all connections");
             _link_manager->stop();
@@ -983,22 +993,22 @@ namespace srouter
             if (_tun)
                 _tun->stop();
 
-            auto rv = _loop_ticker->stop();
-            log::debug(logcat, "router loop ticker stopped {}successfully!", rv ? "" : "un");
-            _loop_ticker.reset();
+            auto rv = _jq->remove(_tick_timer);
+            log::debug(logcat, "router tick timer stopped {}successfully!", rv ? "" : "un");
+            _tick_timer = {};
 
-            if (_service_stat_ticker)
+            if (_service_stat_timer)
             {
-                rv = _service_stat_ticker->stop();
-                log::debug(logcat, "service stat ticker stopped {}successfully!", rv ? "" : "un");
-                _service_stat_ticker.reset();
+                rv = _jq->remove(_service_stat_timer);
+                log::debug(logcat, "service stat timer stopped {}successfully!", rv ? "" : "un");
+                _service_stat_timer = {};
             }
 
-            if (_reachability_ticker)
+            if (_gossip_timer)
             {
-                log::debug(logcat, "clearing reachability ticker...");
-                _reachability_ticker->stop();
-                _reachability_ticker.reset();
+                log::debug(logcat, "clearing RC regen timer...");
+                _jq->remove(_gossip_timer);
+                _gossip_timer = {};
             }
 
             log::debug(logcat, "stopping nodedb events");

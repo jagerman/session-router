@@ -179,9 +179,9 @@ namespace srouter::rpc
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        log::info(logcat, "Starting OxendRPC ping ticker...");
+        log::info(logcat, "Starting OxendRPC ping timer...");
         ping();
-        _ping_ticker = _router.loop().call_every(PING_INTERVAL, [this] { ping(); });
+        _ping_timer = _router._jq->add_timer(PING_INTERVAL, [this] { ping(); });
     }
 
     void OxendRPC::handle_new_service_node_list(const nlohmann::json& j)

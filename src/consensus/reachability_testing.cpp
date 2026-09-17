@@ -20,20 +20,32 @@ namespace srouter::consensus
 
     void reachability_testing::start()
     {
+        // Overwriting a live id would orphan its timer on the queue, still ticking and no longer
+        // reachable by stop().
+        reachability_testing::stop();
+
         if (router.config().oxend.disable_testing)
             log::warning(logcat, "Reachability testing DISABLED in config");
         else
         {
-            log::debug(logcat, "Starting reachability testing tickers");
-            ticker = router.loop().call_every(TEST_INTERVAL, [this] { tick(); });
-            whine_ticker = router.loop().call_every(30s, [this] { check_incoming_tests(); });
+            log::debug(logcat, "Starting reachability testing timers");
+            test_timer = router._jq->add_timer(TEST_INTERVAL, [this] { tick(); });
+            whine_timer = router._jq->add_timer(30s, [this] { check_incoming_tests(); });
         }
     }
 
     void reachability_testing::stop()
     {
-        ticker.reset();
-        whine_ticker.reset();
+        if (test_timer)
+        {
+            router._jq->remove(test_timer);
+            test_timer = {};
+        }
+        if (whine_timer)
+        {
+            router._jq->remove(whine_timer);
+            whine_timer = {};
+        }
     }
 
     void reachability_testing::tick()

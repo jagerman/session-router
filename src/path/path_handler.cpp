@@ -231,12 +231,6 @@ namespace srouter::path
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         _running = false;
 
-        if (_path_rotater)
-        {
-            _path_rotater.reset();
-            log::trace(logcat, "Path rotation ticker stopped!");
-        }
-
         _paths.clear();
     }
 
@@ -448,7 +442,7 @@ namespace srouter::path
 
     std::shared_ptr<Path> PathHandler::build_init_path(std::span<const RelayContact> hops, sys_ms expiry_ts)
     {
-        auto path = std::make_shared<path::Path>(router, hops, *this, expiry_ts);
+        auto path = std::make_shared<path::Path>(router, hops, expiry_ts);
 
         Lock_t l{paths_mutex};
 
@@ -679,8 +673,12 @@ namespace srouter::path
             {
                 auto ptr = new_path.get();
                 auto id = ++_path_counter;
-                send_path_build(std::move(new_path), id);
-                return ptr;
+                if (send_path_build(new_path, id))
+                    return ptr;
+
+                // The build could not be sent; send_path_build has already failed the path, so
+                // `ptr` is about to dangle and must not be handed back.
+                return nullptr;
             }
         }
 
@@ -688,15 +686,21 @@ namespace srouter::path
         return nullptr;
     }
 
-    void PathHandler::send_path_build(const std::shared_ptr<Path>& new_path, int64_t id)
+    bool PathHandler::send_path_build(const std::shared_ptr<Path>& new_path, int64_t id)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         auto payload = path_build_onion(*new_path);
         const auto& upstream = new_path->edge().router_id;
 
-        router.link_endpoint().send_command(
-            upstream, "path_build", std::move(payload), [this, new_path, id](quic::message m) {
+        bool sent = router.link_endpoint().send_command(
+            upstream,
+            "path_build",
+            std::move(payload),
+            [this, alive = std::weak_ptr{_alive}, new_path, id](quic::message m) {
+                if (not alive.lock())
+                    return;
+
                 if (m)
                 {
                     log::info(logcat, "PATH ESTABLISHED: {}", *new_path);
@@ -724,19 +728,35 @@ namespace srouter::path
 
                 return path_build_failed(id, new_path.get(), m.timed_out);
             });
+
+        // A router id that we can't resolve to a connection is reported by return value rather than
+        // by invoking the response handler, so without this the path stays in _paths as a build
+        // that can never finish: nothing drops it until it expires, and until then it counts
+        // towards _target_paths and so suppresses the replacement build.
+        if (not sent)
+        {
+            log::warning(logcat, "Could not send path_build to edge {}; dropping path", upstream);
+            path_build_failed(id, new_path.get(), false);
+        }
+
+        return sent;
     }
 
     void PathHandler::path_build_failed(int64_t build_id, Path* p, bool timeout)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        drop_path(*p);
+        // p is null when build() could not even attempt the build, in which case there is no path
+        // to drop or profile, but the failure still counts towards the backoff below.
+        if (p)
+        {
+            drop_path(*p);
+            if (timeout)
+                router.router_profiling().path_timeout(*p);
+        }
 
         if (timeout)
-        {
-            router.router_profiling().path_timeout(*p);
             router.path_builds.timeouts++;
-        }
         else
             router.path_builds.build_fails++;
 
