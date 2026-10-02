@@ -286,6 +286,10 @@ namespace srouter
             // Deprecated: for handling pre-PFS session accept:
             virtual void handle_session_accept_deprecated(std::span<const std::byte> params);
 
+            // The most that make_session_message adds to a data message's payload: the traffic type
+            // byte, the MAC, the session tag and the pivot ID (which some messages omit).
+            static constexpr size_t DATA_MESSAGE_OVERHEAD = 1 + crypto::TAG_SIZE + sizeof(session_tag) + HopID::SIZE;
+
             // Sends a data message (i.e. datagram)
             void send_session_data_message(std::span<const std::byte> data, traffic_type type);
             void send_session_data_message(std::span<const std::byte> data, net::IPProtocol proto)

@@ -722,6 +722,8 @@ namespace srouter::session
         std::vector<std::byte> everything;
         auto target_size =
             chacha_size_with_mac + sizeof(_outbound_tag) + (relay_session_return ? 0 : _remote_pivot_txid.size());
+        // The link payload sizes in session/tunnel_sizes.hpp are computed from this bound.
+        assert(target_size - data.size() <= DATA_MESSAGE_OVERHEAD);
         // Once we're done with the session part of this message it still gets encrypted at the path
         // layer, so reserve enough space for the data the path encryption needs to append:
         everything.reserve(target_size + path::Path::ENCRYPT_PATH_MESSAGE_OVERHEAD);
