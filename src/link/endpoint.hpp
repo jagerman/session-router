@@ -132,9 +132,6 @@ namespace srouter::link
         std::shared_ptr<bool> canary = std::make_shared<bool>(true);
 
       public:
-        // Returns the max UDP payload cap configured on the QUIC endpoint, if any.
-        std::optional<size_t> get_max_udp_payload() const { return endpoint->get_max_udp_payload(); }
-
         void start_timers();
 
         // Returns the connection to the given relay.  If there are established connections in both

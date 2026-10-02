@@ -98,23 +98,7 @@ namespace session::router
 
         auto& [local_port, session] = *mapped;
 
-        // Total tunnel overhead from outer UDP payload to inner payload:
-        // outer QUIC packet framing (44) + path onion (41) + session encryption (37)
-        // + IPv6+UDP wrapping (48) = 170 bytes.
-        constexpr size_t TUNNEL_OVERHEAD = 170;
-
-        // If the outer endpoint has a max UDP payload cap, we can compute the suggested inner
-        // payload size.  Otherwise (uncapped PMTUD), suggested_mtu is nullopt.
-        std::optional<uint16_t> suggested_mtu;
-        if (auto outer_max = context->router->link_endpoint().get_max_udp_payload();
-            outer_max && *outer_max > TUNNEL_OVERHEAD)
-            suggested_mtu = *outer_max - TUNNEL_OVERHEAD;
-
-        tunnel_info ti{
-            .remote = netaddr.to_string(),
-            .remote_port = dest_port,
-            .local_port = local_port,
-            .suggested_mtu = suggested_mtu};
+        tunnel_info ti{.remote = netaddr.to_string(), .remote_port = dest_port, .local_port = local_port};
 
         if (session->is_established())
         {

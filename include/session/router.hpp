@@ -50,15 +50,6 @@ namespace session::router
         /// (TCP) or send (UDP) to this port (on IPv6 localhost address ::1) to reach the
         /// destination through session_router.
         uint16_t local_port;
-
-        /// A suggested maximum payload size for the tunnel.  If the application supports a
-        /// configurable payload size, using this value avoids additional overhead from packet
-        /// splitting, which can slightly reduce latency and jitter.  nullopt means the outer
-        /// connection's MTU is unknown (PMTUD without a cap); the application should use its
-        /// own default.  If the application doesn't support payload size configuration then
-        /// this value can simply be ignored and Session Router will split any "too large"
-        /// packets into two.
-        std::optional<uint16_t> suggested_mtu;
     };
 
     /// Why a tunnel that was requested did not come up.
