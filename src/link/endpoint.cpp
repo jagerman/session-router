@@ -83,6 +83,10 @@ namespace srouter::link
         if (router.is_service_node)
             inbound_alpn.emplace({RELAY_ALPN, CLIENT_ALPN, BOOTSTRAP_ALPN});
 
+        std::optional<quic::opt::max_udp_payload> max_udp_payload;
+        if (auto cap = router.config().links.max_udp_payload)
+            max_udp_payload.emplace(*cap);
+
         endpoint = quic::Endpoint::endpoint(
             *loop,
             router.listen_addr(),
@@ -97,7 +101,8 @@ namespace srouter::link
             },
             inbound_alpn,
             quic::opt::outbound_alpns{{router.is_service_node ? RELAY_ALPN : CLIENT_ALPN}},
-            quic::opt::enable_datagrams{quic::Splitting::ACTIVE}.queue_limit(2'000'000));
+            quic::opt::enable_datagrams{quic::Splitting::ACTIVE}.queue_limit(2'000'000),
+            max_udp_payload);
 
         tls_creds->enable_outbound_0rtt(
             [this](

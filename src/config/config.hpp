@@ -240,6 +240,8 @@ namespace srouter
     struct LinksConfig : ConfigBase
     {
         std::optional<quic::Address> listen_addr;
+        // nullopt means no cap.
+        std::optional<size_t> max_udp_payload;
 
         void define_config_options(ConfigDefinition& conf) override;
     };

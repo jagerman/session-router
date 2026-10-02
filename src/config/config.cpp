@@ -7,6 +7,7 @@
 #include "definition.hpp"
 #include "ini.hpp"
 #include "path/path_handler.hpp"
+#include "session/tunnel_sizes.hpp"
 #include "util/file.hpp"
 #include "util/formattable.hpp"
 #include "util/logging/buffer.hpp"
@@ -1084,6 +1085,34 @@ namespace srouter
                         "Multiple listen addresses found.  If upgrading from an older Session Router, delete extra "
                         "[bind]:inbound and [bind]:IP and use only one [bind]:listen"};
                 listen_addr = parse_addr_for_link(arg);
+            });
+
+        conf.define_option<int>(
+            "bind",
+            "max-udp-payload",
+            Default{
+                conf.type == config::Type::EmbeddedClient ? static_cast<int>(session::UDP_TUNNEL_UNSPLIT_LINK_PAYLOAD)
+                                                          : -1},
+            Comment{
+                "Caps the UDP payload size (not the MTU) of connections to relays: path MTU discovery",
+                "probes for the largest size that works, up to this cap.  -1 means no cap; otherwise the",
+                "value must be at least 1200, the QUIC minimum.",
+                "",
+                "Relays and full clients default to no cap.  Embedded clients default to {}: the split"_format(
+                    session::UDP_TUNNEL_UNSPLIT_LINK_PAYLOAD),
+                "threshold for tunnelled QUIC connections at the 1200 QUIC minimum, i.e. the smallest size",
+                "that carries each of their packets without splitting it, and a conservative cap for",
+                "clients that change networks.",
+            },
+            [this](int arg) {
+                if (arg == -1)
+                    max_udp_payload.reset();
+                else if (arg < static_cast<int>(quic::MIN_UDP_PAYLOAD))
+                    throw std::invalid_argument{
+                        "Invalid [bind]:max-udp-payload {}: must be -1 (no cap) or at least {}"_format(
+                            arg, quic::MIN_UDP_PAYLOAD)};
+                else
+                    max_udp_payload = static_cast<size_t>(arg);
             });
     }
 
