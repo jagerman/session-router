@@ -62,7 +62,7 @@ namespace srouter::dns
             auto h = std::make_unique<udp_socket_helper>();
 
             h->sock = std::make_unique<quic::UDPSocket>(
-                loop.get_event_base(), bind, /*gso=*/false, [this, h = h.get()](quic::Packet&& pkt) {
+                loop.get_event_base(), bind, quic::UDPSocket::options{}, [this, h = h.get()](quic::Packet&& pkt) {
                     if (pkt.path.remote == pkt.path.local)
                     {
                         log::warning(logcat, "DNS packet loop detected: ignoring UDP DNS request");
@@ -77,7 +77,9 @@ namespace srouter::dns
                         pkt.path.remote,
                         [path = pkt.path, udp = h->sock.get()](std::span<const std::byte> payload) {
                             const size_t sz = payload.size();
-                            udp->send(path, payload.data(), &sz, 0, 1);
+                            const uint8_t ecn = 0;
+                            // A reply has to come from the address the query was sent to.
+                            udp->send(path, payload.data(), &sz, &ecn, 1, /*pin_source=*/true);
                         });
                 });
             last_port = h->sock->address().port();

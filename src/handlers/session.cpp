@@ -1374,7 +1374,7 @@ namespace srouter::handlers
                 udp_handle = std::make_unique<quic::UDPSocket>(
                     router.loop().get_event_base(),
                     quic::Address{"::1", 0},
-                    /*gso=*/false,
+                    quic::UDPSocket::options{},
                     [this, target](quic::Packet&& pkt) {
                         // FIXME: cache most recently used mapping/session/etc.?
                         //        i.e. if this packet is for the same remote as the last packet

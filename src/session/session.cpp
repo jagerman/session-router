@@ -936,8 +936,9 @@ namespace srouter::session
             quic::Path{socket.address(), quic::Address{ipv6_localhost, app_port}},
             payload.data(),
             &bufsize,
-            ecn,
-            n_pkts);
+            &ecn,
+            n_pkts,
+            /*pin_source=*/false);
         log::trace(
             logcat, "UDP from remote -> socket send to local returned {} (ec={})", ior.success(), ior.error_code);
     }
