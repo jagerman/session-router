@@ -248,7 +248,7 @@ def main(ctx):
         static_release(
             "Static arm64 (Debian 12: bookworm)",
             "debian-bookworm",
-            "linux-armhf",
+            "linux-arm64",
             "-march=armv8-a",
             arch = "arm64",
             jobs = 4,
