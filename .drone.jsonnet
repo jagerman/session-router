@@ -286,7 +286,10 @@ local clang(version) = debian_pipeline(
   'Debian sid/clang-' + version,
   docker_base + 'debian-sid-clang',
   deps=default_deps(add=['clang-' + version, 'llvm-' + version], remove='g++'),
-  cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version + (
+  // clang's LTO objects need a linker that reads LLVM bitcode, which the default bfd linker here
+  // doesn't, so the static dependencies have to be built without it.
+  cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version +
+              ' -DSESSIONDEPS_LTO=OFF' + (
     // clang-21 breaks lots of things in fmt 10, so we have to avoid it.
     if version >= 21 then ' -DFORCE_OXENLOGGING_SUBMODULE=ON -DOXEN_LOGGING_FORCE_SUBMODULES=ON ' else ' '
   )
