@@ -211,7 +211,7 @@ def main(ctx):
                 'echo "Building on $${CI_MACHINE}"',
                 apt_get + " update",
                 apt_get + " install -y eatmydata",
-                "eatmydata " + apt_get + " install --no-install-recommends -y git clang-format-16",
+                "eatmydata " + apt_get + " install --no-install-recommends -y git clang-format-19",
                 "./contrib/ci/format-verify.sh",
             ],
         }], skip_packaging_branches = False),
