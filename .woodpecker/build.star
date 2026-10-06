@@ -176,7 +176,20 @@ def full_llvm(version):
 #   than ubuntu.
 # - amd64 we build on the oldest Debian *or* Ubuntu distro, so that it should work on that or
 #   anything newer.
-def static_release(name, image, upload_os, cflags, cxxflags = None, arch = "amd64", jobs = 6, lto = False):
+#
+# They target the architecture as a whole, not the build machine's CPU: on x86 the build system then
+# applies its own flags for public releases; elsewhere cflags must give the target.
+def static_release(name, image, upload_os, cflags = None, cxxflags = None, arch = "amd64", jobs = 6, lto = False):
+    cmake = {
+        "BUILD_STATIC_DEPS": True,
+        "SROUTER_NATIVE_BUILD": False,
+        "WITH_SYSTEMD": False,
+        "WITH_LTO": lto,
+        "USE_LTO": lto,
+    }
+    if cflags:
+        cmake["CMAKE_C_FLAGS"] = cflags
+        cmake["CMAKE_CXX_FLAGS"] = cxxflags if cxxflags else cflags
     return linux(
         name,
         image,
@@ -184,14 +197,7 @@ def static_release(name, image, upload_os, cflags, cxxflags = None, arch = "amd6
         jobs = jobs,
         deps = static_deps,
         session_repo = False,
-        cmake = {
-            "BUILD_STATIC_DEPS": True,
-            "WITH_SYSTEMD": False,
-            "WITH_LTO": lto,
-            "USE_LTO": lto,
-            "CMAKE_C_FLAGS": cflags,
-            "CMAKE_CXX_FLAGS": cxxflags if cxxflags else cflags,
-        },
+        cmake = cmake,
         upload_os = upload_os,
     )
 
@@ -257,7 +263,6 @@ def main(ctx):
             "Static AMD64 (Ubuntu jammy)",
             "ubuntu-jammy",
             "linux-amd64",
-            "-march=x86-64 -mtune=haswell",
             lto = True,
         ),
 
