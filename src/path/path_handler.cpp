@@ -782,6 +782,9 @@ namespace srouter::path
             throw path::TransitHopError::INVALID_DATA();
         }
 
+        log::critical(logcat, "Path build frame decoded v{} ({}-byte frames); upstream {}",
+                hop.version, frame.size(), hop.upstream);
+
         // If we are a terminal hop then two things must be true: upstream must be this router, and
         // the rxid and txid must be equal.  If *not* a terminal hop, then both must be false.
         hop.terminal_hop = hop.upstream == r.id();
