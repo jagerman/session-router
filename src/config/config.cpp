@@ -1165,14 +1165,19 @@ namespace srouter
             },
             assignment_acceptor(gso));
 
+        const bool relay = conf.type == config::Type::Relay;
+
         conf.define_option<std::string>(
             "bind",
             "congestion-control",
-            Default{"cubic"},
+            Default{relay ? "cubic" : "bbr"},
             Comment{
                 "Congestion control algorithm for what Session Router sends over its connections: bbr,",
                 "cubic, or reno.  Cubic and reno slow down on any loss, easing off peers that are dropping",
                 "packets because they can't keep up; bbr keeps its sending rate until loss exceeds 2%.",
+                "",
+                "Relays default to cubic.  Clients default to bbr, which copes better with wifi packet",
+                "loss and avoids filling a slow upload link's buffer, delaying the client's other traffic.",
             },
             [this](std::string arg) {
                 arg = lowercase_ascii_string(std::move(arg));
@@ -1189,8 +1194,6 @@ namespace srouter
 
         // Every relay and client connected to a relay sends to it over the one socket, in bursts, so
         // relays want a larger receive buffer than libquic's client-oriented default.
-        const bool relay = conf.type == config::Type::Relay;
-
         conf.define_option<std::string>(
             "bind",
             "udp-recv-buffer",
